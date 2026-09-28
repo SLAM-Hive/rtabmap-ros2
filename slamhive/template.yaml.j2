@@ -1,0 +1,37 @@
+use_sim_time: {{ use_sim_time }}
+frame_id: "{{ frame_id }}"
+odom_frame_id: "{{ odom_frame_id }}"
+map_frame_id: "{{ map_frame_id }}"
+database_path: "{{ database_path }}"
+rgb_topic: "{{ rgb_topic }}"
+depth_topic: "{{ depth_topic }}"
+camera_info_topic: "{{ camera_info_topic }}"
+scan_topic: "{{ scan_topic }}"
+subscribe_scan: {{ subscribe_scan }}
+image_transport: "{{ image_transport }}"
+depth_transport: "{{ depth_transport }}"
+approx_sync: {{ approx_sync }}
+sync_queue_size: {{ sync_queue_size }}
+topic_queue_size: {{ topic_queue_size }}
+approx_sync_max_interval: {{ approx_sync_max_interval }}
+launch_start_wait: {{ launch_start_wait }}
+post_play_wait: {{ post_play_wait }}
+rtabmap_params:
+  Rtabmap/DetectionRate: "{{ Rtabmap_DetectionRate }}"
+  RGBD/NeighborLinkRefining: "{{ RGBD_NeighborLinkRefining }}"
+  RGBD/ProximityBySpace: "{{ RGBD_ProximityBySpace }}"
+  RGBD/ProximityByTime: "{{ RGBD_ProximityByTime }}"
+  RGBD/ProximityPathMaxNeighbors: "{{ RGBD_ProximityPathMaxNeighbors }}"
+  Reg/Strategy: "{{ Reg_Strategy }}"
+  Vis/MinInliers: "{{ Vis_MinInliers }}"
+  RGBD/OptimizeFromGraphEnd: "{{ RGBD_OptimizeFromGraphEnd }}"
+  RGBD/OptimizeMaxError: "{{ RGBD_OptimizeMaxError }}"
+  Reg/Force3DoF: "{{ Reg_Force3DoF }}"
+  Grid/FromDepth: "{{ Grid_FromDepth }}"
+  Mem/STMSize: "{{ Mem_STMSize }}"
+  RGBD/LocalRadius: "{{ RGBD_LocalRadius }}"
+  Icp/CorrespondenceRatio: "{{ Icp_CorrespondenceRatio }}"
+  Icp/PM: "{{ Icp_PM }}"
+  Icp/PointToPlane: "{{ Icp_PointToPlane }}"
+  Icp/MaxCorrespondenceDistance: "{{ Icp_MaxCorrespondenceDistance }}"
+  Icp/VoxelSize: "{{ Icp_VoxelSize }}"

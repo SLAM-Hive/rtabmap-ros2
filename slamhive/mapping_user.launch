@@ -1,0 +1,130 @@
+#!/usr/bin/env python3
+
+import sys
+from pathlib import Path
+
+import yaml
+from launch import LaunchDescription, LaunchService
+from launch_ros.actions import Node, SetParameter
+
+
+CONFIG_PATH = Path("/slamhive/mappingtask.yaml")
+
+
+def as_bool(value):
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def as_int(value):
+    return int(float(value))
+
+
+def as_float(value):
+    return float(value)
+
+
+def load_config():
+    with CONFIG_PATH.open("r", encoding="utf-8") as handle:
+        return yaml.safe_load(handle) or {}
+
+
+def generate_launch_description():
+    cfg = load_config()
+    use_sim_time = as_bool(cfg.get("use_sim_time", True))
+    image_remappings = [
+        ("rgb/image", cfg.get("rgb_topic", "/data_throttled_image")),
+        ("depth/image", cfg.get("depth_topic", "/data_throttled_image_depth")),
+        ("rgb/camera_info", cfg.get("camera_info_topic", "/data_throttled_camera_info")),
+    ]
+
+    subscribe_scan = as_bool(cfg.get("subscribe_scan", True))
+    scan_topic = cfg.get("scan_topic", "/jn0/base_scan")
+    slam_remappings = list(image_remappings)
+    if subscribe_scan:
+        slam_remappings.append(("scan", scan_topic))
+
+    odom_topic = cfg.get("odom_topic", "odom")
+    slam_remappings.append(("odom", odom_topic))
+    enable_rgbd_odometry = as_bool(cfg.get("enable_rgbd_odometry", not subscribe_scan))
+
+    parameters = {
+        "use_sim_time": use_sim_time,
+        "frame_id": cfg.get("frame_id", "base_footprint"),
+        "odom_frame_id": cfg.get("odom_frame_id", "odom"),
+        "map_frame_id": cfg.get("map_frame_id", "map"),
+        "database_path": cfg.get("database_path", "/slamhive/result/rtabmap.db"),
+        "odom_tf_linear_variance": 0.001,
+        "odom_tf_angular_variance": 0.001,
+        "subscribe_rgbd": True,
+        "subscribe_scan": subscribe_scan,
+        "approx_sync": as_bool(cfg.get("approx_sync", True)),
+        "sync_queue_size": as_int(cfg.get("sync_queue_size", 10)),
+        "topic_queue_size": as_int(cfg.get("topic_queue_size", 10)),
+    }
+    for key, value in (cfg.get("rtabmap_params") or {}).items():
+        parameters[str(key)] = str(value)
+
+    sync_parameters = dict(parameters)
+    sync_parameters.update(
+        {
+            "image_transport": cfg.get("image_transport", "compressed"),
+            "depth_transport": cfg.get("depth_transport", "compressedDepth"),
+            "approx_sync_max_interval": as_float(cfg.get("approx_sync_max_interval", 0.02)),
+        }
+    )
+
+    launch_actions = [
+        SetParameter(name="use_sim_time", value=use_sim_time),
+        Node(
+            package="rtabmap_sync",
+            executable="rgbd_sync",
+            output="screen",
+            parameters=[sync_parameters],
+            remappings=image_remappings,
+        ),
+    ]
+
+    if enable_rgbd_odometry:
+        odom_parameters = {
+            "use_sim_time": use_sim_time,
+            "frame_id": cfg.get("frame_id", "base_footprint"),
+            "odom_frame_id": cfg.get("odom_frame_id", "odom"),
+            "publish_tf": as_bool(cfg.get("publish_odom_tf", True)),
+            "approx_sync": as_bool(cfg.get("approx_sync", True)),
+            "sync_queue_size": as_int(cfg.get("sync_queue_size", 10)),
+            "queue_size": as_int(cfg.get("topic_queue_size", 10)),
+        }
+        launch_actions.append(
+            Node(
+                package="rtabmap_odom",
+                executable="rgbd_odometry",
+                output="screen",
+                parameters=[odom_parameters],
+                remappings=image_remappings + [("odom", odom_topic)],
+            )
+        )
+
+    launch_actions.append(
+        Node(
+            package="rtabmap_slam",
+            executable="rtabmap",
+            output="screen",
+            parameters=[parameters],
+            remappings=slam_remappings,
+            arguments=["-d"],
+        )
+    )
+
+    return LaunchDescription(launch_actions)
+
+
+def main():
+    launch_service = LaunchService(argv=sys.argv[1:])
+    launch_service.include_launch_description(generate_launch_description())
+    return launch_service.run()
+
+
+if __name__ == "__main__":
+    sys.exit(main())
